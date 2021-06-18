@@ -15,11 +15,12 @@ pub struct Block {
 
 impl Debug for Block {
     fn fmt (&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Block[{}]: {} at: {} with: {}",
+        write!(f, "Block[{}]: {} at: {} with: {} and nonce: {}",
             &self.index,
             &hex::encode(&self.hash),
             &self.timestamp,
             &self.payload,
+            &self.nonce,
         )
     }
 }
@@ -34,6 +35,17 @@ impl Block {
             nonce,
             payload,
             difficulty,
+        }
+    }
+
+    pub fn mine (&mut self) {
+        for nonce_attempt in 0..(u64::max_value()) {
+            self.nonce = nonce_attempt;
+            let hash = self.hash();
+            if check_difficulty(&hash, self.difficulty){
+                self.hash = hash;
+                return;
+            }
         }
     }
 }
@@ -55,17 +67,9 @@ impl Hashable for Block {
 
 }
 
-pub fn mine (&mut self) {
-    for nonce_attempt in 0..(u64::max_value()) {
-        self.nonce = nonce_attempt;
-        let hash = self.hash();
-        if check_difficulty(&hash, self.difficulty){
-            self.hash = hash;
-            return;
-        }
-    }
-}
+
 
 pub fn check_difficulty (hash: &BlockHash, difficulty: u128) -> bool {
+
     difficulty > difficulty_bytes_as_u128(&hash)
 }
