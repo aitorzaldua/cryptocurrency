@@ -1,50 +1,45 @@
 use super::*;
+use std::collections::HashSet;
+
+pub enum BlockValidationErr {
+    MismatchedIndex,
+    InvalidHash,
+    AchronologicalTimestamp,
+    MismatchedPreviousHash,
+    InvalidGenesisBlockFormat,
+    InvalidInput,
+    InsufficientInputValue,
+    InvalidCoinbaseTransaction,
+}
+
 
 pub struct Blockchain {
     pub blocks: Vec<Block>,
+    unspent_outputs: HashSet<Hash>,
 }
 
 impl Blockchain {
-    pub fn verify (&self) -> bool {
-        for (i, block) in self.blocks.iter().enumerate() {
-            //Checking the index
-            if block.index != i as u32 {
-                println! ("Index mismatch {} != {}",
-                    &block.index,
-                    &i,
-                );
-            return false;
-            }
-            //Checking difficulty match
-            else if !block::check_difficulty(&block.hash(),
-            block.difficulty) {
-                println!("Difficulty fail");
-                return false;
-            }
-            //The genesis block  don´t have previous hash block and 
-            //don´t have to check the previous timestamp so
-            //There is differenet validations
-            else if i!= 0 {
-                //Not genesis block
-                let prev_block = &self.blocks[i -1];
-                if block.timestamp <= prev_block.timestamp {
-                    println!("Time did not increase");
-                    return false;
-                } else if block.prev_block_hash != prev_block.hash {
-                    println!("Hash mismatch");
-                    return false;
-                }
+    pub fn update_with_block (&mut self, block: Block) -> Result<(), BlockValidationErr> {
+        let i = self.blocks.len();
 
-            } else {
-                //genesis block
-                if block.prev_block_hash != vec![0; 32] {
-                    println!("Genesis block prev_block_hash invalid: {:?}", block.prev_block_hash);
-                    return false;
-                }
-
+        if block.index != i as u32 {
+            return Err(BlockValidationErr::MismatchedIndex);
+        } else if !block::check_difficulty(&block.hash(), block.difficulty) {
+            return Err(BlockValidationErr::InvalidHash);
+        } else if i != 0 {
+            // Not genesis block
+            let prev_block = &self.blocks[i - 1];
+            if block.timestamp <= prev_block.timestamp {
+                return Err(BlockValidationErr::AchronologicalTimestamp);
+            } else if block.prev_block_hash != prev_block.hash {
+                return Err(BlockValidationErr::MismatchedPreviousHash);
+            }
+        } else {
+            // Genesis block
+            if block.prev_block_hash != vec![0; 32] {
+                return Err(BlockValidationErr::InvalidGenesisBlockFormat);
             }
         }
-
-        true
+        Ok(())
     }
 }
